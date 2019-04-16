@@ -2,10 +2,7 @@ import argparse
 import cv2
 
 from video import VideoStream
-
-def wait_for_key(miliseconds):
-    # '& 0xFF' because we're interested in the last 8 bits only.
-    return cv2.waitKey(miliseconds) & 0xFF
+from gui import Window, wait_for_key
 
 if __name__  == '__main__':
     parser = argparse.ArgumentParser()
@@ -13,10 +10,10 @@ if __name__  == '__main__':
     args = parser.parse_args()
 
     stream = VideoStream(args.input)
-
-    cv2.namedWindow('window', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('window', 640, 480)
-
+    
+    window = Window('video')
+    window.show(640, 480)
+    
     while(True):
         frame = stream.next_frame()
         key_pressed = wait_for_key(1)
@@ -31,6 +28,7 @@ if __name__  == '__main__':
         if frame is None or key_pressed == ord('q'):
             break
 
-        cv2.imshow('window', frame.cv_image)
+        window.display_frame(frame)
 
     stream.close()
+    window.dispose()
