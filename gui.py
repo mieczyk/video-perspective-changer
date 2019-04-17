@@ -1,7 +1,7 @@
 import cv2
 
 class Window:
-    def __init__(self, name, initial_size):
+    def __init__(self, name):
         self._name = name
 
     def show(self, width, height):
