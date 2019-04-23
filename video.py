@@ -4,6 +4,12 @@ class Frame:
     def __init__(self, cv_image):
         self.cv_image = cv_image
         self.height, self.width = self.cv_image.shape[:2]
+        
+    def draw_polygon(self, vertices, color=(0,255,0), thickness=5):
+        cv2.polylines(self.cv_image, [vertices.reshape((-1,1,2))], True, color, thickness)
+
+    def copy(self):
+        return Frame(self.cv_image.copy())
 
 class VideoStream:
     def __init__(self, source):

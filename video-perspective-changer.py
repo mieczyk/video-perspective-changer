@@ -21,12 +21,18 @@ if __name__  == '__main__':
         # Pause the video
         if key_pressed == ord(' '):
             while(True):
-                key_pressed = wait_for_key(0)
+                key_pressed = wait_for_key(1)
                 if  key_pressed == ord(' ') or key_pressed == ord('q'):
                     break
+                if key_pressed == ord('d'):
+                    window.selection = None
+                window.display_frame(frame)
 
         if frame is None or key_pressed == ord('q'):
             break
+
+        if key_pressed == ord('d'):
+            window.selection = None;
 
         window.display_frame(frame)
 
