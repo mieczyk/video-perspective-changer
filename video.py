@@ -8,6 +8,9 @@ class Frame:
     def draw_polygon(self, vertices, color=(0,255,0), thickness=5):
         cv2.polylines(self.cv_image, [vertices.reshape((-1,1,2))], True, color, thickness)
 
+    def draw_point(self, center, radius=5, color=(0,0,255)):
+        cv2.circle(self.cv_image, tuple(center), radius, color, cv2.FILLED)
+
     def copy(self):
         return Frame(self.cv_image.copy())
 

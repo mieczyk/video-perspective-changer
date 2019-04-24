@@ -30,6 +30,8 @@ class Window:
         if self.selection is not None:
             frame = frame.copy()
             frame.draw_polygon(self.selection.vertices)
+            for vertex in self.selection.vertices:
+                frame.draw_point(vertex)
         
         cv2.imshow(self._name, frame.cv_image)
 
