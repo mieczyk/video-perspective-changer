@@ -1,10 +1,28 @@
 import cv2
+import numpy as np
 
 class Frame:
     def __init__(self, cv_image):
         self.cv_image = cv_image
         self.height, self.width = self.cv_image.shape[:2]
-        
+       
+    def focus_on_area(self, area_coordinates):
+        dst_coordinates = np.float32([
+            [0, 0],
+            [self.width, 0],
+            [self.width, self.height],
+            [0, self.height]
+        ])
+
+        self.cv_image = cv2.warpPerspective(
+            self.cv_image,
+            cv2.getPerspectiveTransform(
+                area_coordinates.astype(float32),
+                dst_coordinates
+            ),
+            (self.width, self.height)
+        )
+
     def draw_polygon(self, vertices, color=(0,255,0), thickness=5):
         cv2.polylines(self.cv_image, [vertices.reshape((-1,1,2))], True, color, thickness)
 
