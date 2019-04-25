@@ -7,6 +7,5 @@
     * <-, ->, [, ] - next; previous frame(s).
     * <SPACE> - pause.
     * <ENTER> - change the perspective of the current video.
-* A user can "draw" a rectangle with mouse and manipulate its vertices (the rectangle will be transformed into an irregular quandrange during the manipulation).
 * Multiple video files are processed simultaneously.
 * Separate configuration file + README.
