@@ -5,8 +5,15 @@ class Frame:
     def __init__(self, cv_image):
         self.cv_image = cv_image
         self.height, self.width = self.cv_image.shape[:2]
-       
+      
     def focus_on_area(self, area_coordinates):
+        '''
+        Changes the frame's perspective using OpenCV's warpPerspective() method.
+
+        :param area_coordinates: Four points indicating the area of focus. 
+            The method assumes that points are passed in the following order: 
+            top-left, top-right, bottom-right, bottom-left.
+        '''
         dst_coordinates = np.float32([
             [0, 0],
             [self.width, 0],
@@ -17,7 +24,7 @@ class Frame:
         self.cv_image = cv2.warpPerspective(
             self.cv_image,
             cv2.getPerspectiveTransform(
-                area_coordinates.astype(float32),
+                area_coordinates.astype(np.float32),
                 dst_coordinates
             ),
             (self.width, self.height)
