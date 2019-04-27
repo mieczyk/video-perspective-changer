@@ -21,12 +21,12 @@ class Window:
             else:
                 self._selecting = True
                 self.selection = Selection([x,y])
-        elif event == cv2.EVENT_MOUSEMOVE: 
+        elif event == cv2.EVENT_MOUSEMOVE and self.selection is not None: 
             if self._selecting:
                 self.selection.update([x,y])
             elif self._dragging:
                 self.selection.update_active_vertex([x,y])
-        elif event == cv2.EVENT_LBUTTONUP:
+        elif event == cv2.EVENT_LBUTTONUP and self.selection is not None:
             if self._selecting:
                 self.selection.update([x,y])
                 self._selecting = False
@@ -34,9 +34,16 @@ class Window:
                 self.selection.update_active_vertex([x,y])
                 self.selection.deactivate_vertex()
                 self._dragging = False
+        elif event == cv2.EVENT_RBUTTONDOWN:
+            self.remove_selection()
 
     def dispose(self):
         cv2.destroyWindow(self._name)
+        
+    def remove_selection(self):
+        self.selection = None
+        self._selecting = False
+        self._dragging = False
 
     def display_frame(self, frame):
         if self.selection is not None:
