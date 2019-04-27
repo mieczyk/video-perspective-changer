@@ -59,6 +59,7 @@ class Selection:
         self._active_vertex_idx = -1
 
         self.vertices = np.full((4,2), start_point, dtype=int)
+        self.top_left_vertex_idx = 0
     
     def update(self, end_point):
         self.vertices[2] = end_point
@@ -67,16 +68,20 @@ class Selection:
         if start_point[0] < end_point[0] and start_point[1] < end_point[1]:
             self.vertices[1] = [end_point[0], start_point[1]]    
             self.vertices[3] = [start_point[0], end_point[1]]
+            self.top_left_vertex_idx = 0
         elif start_point[0] > end_point[0] and start_point[1] < end_point[1]:
             self.vertices[1] = [start_point[0], end_point[1]]
             self.vertices[3] = [end_point[0], start_point[1]]
+            self.top_left_vertex_idx = 3
         elif start_point[0] > end_point[0] and start_point[1] > end_point[1]:
             self.vertices[1] = [end_point[0], start_point[1]]
             self.vertices[3] = [start_point[0], end_point[1]]
+            self.top_left_vertex_idx = 2
         else:
             self.vertices[1] = [start_point[0], end_point[1]]
             self.vertices[3] = [end_point[0], start_point[1]] 
-    
+            self.top_left_vertex_idx = 1
+
     def update_active_vertex(self, end_point):
         if self._active_vertex_idx > -1:
             self.vertices[self._active_vertex_idx] = end_point
