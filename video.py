@@ -43,8 +43,8 @@ class VideoStream:
     def __init__(self, source):
         self._cap = cv2.VideoCapture(source)
         
-        self.width = self._cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        self.height = self._cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        self.width = int(self._cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(self._cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     def next_frame(self):
         success, cv_image = self._cap.read()
@@ -58,3 +58,17 @@ class VideoStream:
 
     def close(self):
         self._cap.release()
+
+class OutputVideoFile:
+    def __init__(self, path, width, height, fps=25):
+        codec = cv2.VideoWriter_fourcc(*'XVID')
+        self._writer = cv2.VideoWriter(path, codec, fps, (width, height))
+        self._width = width
+        self._height = height
+
+    def add_frame(self, frame):
+        self._writer.write(frame.cv_image)
+
+    def save(self):
+        self._writer.release()
+
