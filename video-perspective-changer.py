@@ -1,85 +1,108 @@
-import argparse
+import os, argparse, glob
 import cv2
 import numpy as np
 
-from video import VideoStream
+from video import VideoStream, OutputVideoFile
 from gui import Window, wait_for_key
 
-focused_area_vertices = None
+class VideoWorker:
+    def __init__(self, stream, window):
+        self._stream = stream
+        self._window = window
+        self._stop = False
 
-def main_loop(stream, window, paused = True):
-    global focused_area_vertices
+        self.focused_area_vertices = None
 
-    frame = stream.next_frame()
-    
-    if paused and pause_loop(frame, window) == ord('q'):
-        return
+    def process(self, paused=True):
+        frame = self._stream.next_frame()
 
-    while(frame):
-        key_pressed = wait_for_key(1)
+        if paused:
+            self._pause_loop(frame)
         
-        #<SPACE>: Pause
-        if key_pressed == ord(' '):
-            if pause_loop(frame, window) == ord('q'):
+        while(frame is not None and not self._stop):
+            key_pressed = wait_for_key(1)
+            
+            # <SPACE>: Pause
+            if key_pressed == ord(' '):
+                self._pause_loop(frame)
+            else:
+                self._process_control_key(key_pressed)
+
+            self._display_frame(frame)
+            frame = self._stream.next_frame()
+    
+    def _pause_loop(self, frame):
+        while(not self._stop):
+            key_pressed = wait_for_key(1)
+            
+            # <SPACE>: Pause
+            if key_pressed == ord(' '):
                 break
+            else:
+                self._process_control_key(key_pressed)
+
+            paused_frame = frame.copy()
+            self._display_frame(paused_frame)
+    
+    def _process_control_key(self, key):
         # <q>: Quit
-        elif key_pressed == ord('q'):
-            break
-        else:
-            process_video_control_keys(key_pressed, window)
+        if key == ord('q'):
+            self._stop = True
+        # <RETURN>: Change perspective
+        elif key == 13 and self._window.selection is not None:
+            # Make sure the first vertex is the top left vertex 
+            self.focused_area_vertices = np.roll(
+                self._window.selection.vertices, 
+                -self._window.selection.top_left_vertex_idx,
+                axis=0
+            )
+            self._window.remove_selection()
+        # <u>: Undo the perspective transformation
+        elif key == ord('u'):
+            self.focused_area_vertices = None
 
-        if focused_area_vertices is not None:
-            frame.focus_on_area(focused_area_vertices)
-        window.display_frame(frame)
-
-        frame = stream.next_frame()
-        
-def pause_loop(frame, window):
-    global focused_area_vertices
-    
-    key_pressed = None
-    
-    while(True):
-        key_pressed = wait_for_key(1)
-        if key_pressed == ord(' ') or key_pressed == ord('q'):
-            break
-        else:
-            process_video_control_keys(key_pressed, window)
-
-        paused_frame = frame.copy()
-        if focused_area_vertices is not None:
-            paused_frame.focus_on_area(focused_area_vertices)
-        window.display_frame(paused_frame)
-
-    return key_pressed
-
-def process_video_control_keys(key, window): 
-    global focused_area_vertices
-    
-    # <RETURN>: Change perspective
-    if key == 13 and window.selection is not None:
-        # Make sure the first vertex is the top left vertex 
-        focused_area_vertices = np.roll(
-            window.selection.vertices, 
-            -window.selection.top_left_vertex_idx,
-            axis=0
+    def _display_frame(self, frame):
+        if self.focused_area_vertices is not None:
+            frame.focus_on_area(self.focused_area_vertices)
+        self._window.display_frame(frame)
+ 
+def find_video_files_in_directory(directory, recursive_search=False):
+    VIDEO_FILE_EXT = ['*.mp4', '*.mov', '*.avi']
+    video_files_paths = []
+    for ext in VIDEO_FILE_EXT:
+        pattern = os.path.join(
+            directory, 
+            ('**/' + ext) if recursive_search else ext
         )
-        window.remove_selection()
-    # <u>: Undo the perspective transformation
-    elif key == ord('u'):
-        focused_area_vertices = None
-        
+        video_files_paths.extend(glob.glob(pattern, recursive=recursive_search))
+    return video_files_paths
+
 if __name__  == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('input', help='Input video file or directory with video files')
+    parser.add_argument('input', help='Input video file or directory with video files.')
+    parser.add_argument(
+        '-d', 
+        '--dir', 
+        action='store_true', 
+        help='The input argument is treated as a directory containing input video files.'
+    )
     args = parser.parse_args()
-     
-    window = Window('video'); 
-    window.show(640, 480)
     
-    stream = VideoStream(args.input)
+    videos = {}
 
-    main_loop(stream, window)
-    
-    stream.close()
-    window.dispose()
+    if args.dir:
+        video_files_paths = find_video_files_in_directory(args.input)
+        for path in video_files_paths:
+            video_name = os.path.splitext(os.path.basename(path))[0]
+            videos[video_name] = VideoStream(path)
+    else:
+        video_name = os.path.splitext(os.path.basename(args.input))[0]
+        videos[video_name] = VideoStream(args.input)
+
+    for name, stream in videos.items():
+        window = Window(name)
+        window.show(640,480) 
+        worker = VideoWorker(stream, window)
+        worker.process()
+        window.dispose()
+        stream.close()
