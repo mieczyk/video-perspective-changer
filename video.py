@@ -67,7 +67,8 @@ class OutputVideoFile:
         self._height = height
 
     def add_frame(self, frame):
-        self._writer.write(frame.cv_image)
+        resized_cv_img = cv2.resize(frame.cv_image, (self._width, self._height), cv2.INTER_AREA)
+        self._writer.write(resized_cv_img)
 
     def save(self):
         self._writer.release()

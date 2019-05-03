@@ -1,71 +1,117 @@
 import os, argparse, glob
 import cv2
 import numpy as np
+from threading import Thread
 
 from video import VideoStream, OutputVideoFile
 from gui import Window, wait_for_key
 
-class VideoWorker:
-    def __init__(self, stream, window):
-        self._stream = stream
-        self._window = window
-        self._stop = False
+class VideoController:
+    def __init__(self, video_path):
+        self._stream = VideoStream(video_path)
+        self._focused_area_vertices = None
+        self._original_frame = None
 
-        self.focused_area_vertices = None
+        self.name = os.path.splitext(os.path.basename(video_path))[0]
+        self.current_frame = self._stream.next_frame()
 
-    def process(self, paused=True):
-        frame = self._stream.next_frame()
+    def fetch_next_frame(self):
+        self._original_frame = self._stream.next_frame()
 
-        if paused:
-            self._pause_loop(frame)
+        if self._original_frame is None:
+            self.current_frame = None
+            return
+
+        if self._focused_area_vertices is not None:
+            self.current_frame = self._original_frame.copy()
+            self.current_frame.focus_on_area(self._focused_area_vertices)
+        else:
+            self.current_frame = self._original_frame
+
+    def set_focus_area(self, vertices, top_left_vertex_idx):
+        # Make sure the first vertex is the top left vertex 
+        self._focused_area_vertices = np.roll(
+            vertices, 
+            -top_left_vertex_idx, 
+            axis=0
+        )
+
+    def reset_focus_area(self):
+        self._focused_area_vertices = None
+        self.current_frame = self._original_frame
+    
+    def record(self, output_dir):
+        # TODO: Data hardcoded for testing purposes
+        out = OutputVideoFile('{0}/{1}.out.avi'.format(output_dir, self.name), 640, 480)
+        while self.current_frame is not None:
+            out.add_frame(self.current_frame)
+            self.fetch_next_frame()
+        out.save()
+        print('saved')
+
+    def dispose(self):
+        self._stream.close()
+
+def main_loop(controllers):
+    current_video_idx = 0
+    paused = True 
+    window = None
+    
+    def show_window_for_video(idx):
+        nonlocal window
+        if window is not None:
+            window.dispose()
+        window = Window(controllers[idx].name)
+        window.show(640, 480)
+
+    show_window_for_video(current_video_idx)
+    
+    threads = []
+
+    while current_video_idx < len(controllers):
+        current_video = controllers[current_video_idx]
+        key_pressed = wait_for_key(1)
         
-        while(frame is not None and not self._stop):
-            key_pressed = wait_for_key(1)
-            
-            # <SPACE>: Pause
-            if key_pressed == ord(' '):
-                self._pause_loop(frame)
-            else:
-                self._process_control_key(key_pressed)
-
-            self._display_frame(frame)
-            frame = self._stream.next_frame()
-    
-    def _pause_loop(self, frame):
-        while(not self._stop):
-            key_pressed = wait_for_key(1)
-            
-            # <SPACE>: Pause
-            if key_pressed == ord(' '):
-                break
-            else:
-                self._process_control_key(key_pressed)
-
-            paused_frame = frame.copy()
-            self._display_frame(paused_frame)
-    
-    def _process_control_key(self, key):
-        # <q>: Quit
-        if key == ord('q'):
-            self._stop = True
+        # <SPACE>: Pause
+        if key_pressed == ord(' '):
+            paused = not paused
+        # <q>: Quit 
+        elif key_pressed == ord('q'):
+            break
         # <RETURN>: Change perspective
-        elif key == 13 and self._window.selection is not None:
-            # Make sure the first vertex is the top left vertex 
-            self.focused_area_vertices = np.roll(
-                self._window.selection.vertices, 
-                -self._window.selection.top_left_vertex_idx,
-                axis=0
+        elif key_pressed == 13 and window.selection is not None:
+            current_video.set_focus_area(
+                window.selection.vertices, 
+                window.selection.top_left_vertex_idx
             )
-            self._window.remove_selection()
-        # <u>: Undo the perspective transformation
-        elif key == ord('u'):
-            self.focused_area_vertices = None
+            current_video.fetch_next_frame() 
+            t = Thread(target=current_video.record, args=('out/', ))
+            threads.append(t)
+            t.start()
 
-    def _display_frame(self, frame):
-        if self.focused_area_vertices is not None:
-            frame.focus_on_area(self.focused_area_vertices)
-        self._window.display_frame(frame)
- 
+            current_video_idx += 1
+            if current_video_idx < len(controllers):
+                show_window_for_video(current_video_idx)
+            print(current_video_idx)
+            continue
+        # <u>: Undo the perspective transformation
+        elif key_pressed == ord('u'):
+            current_video.reset_focus_area()
+
+        if not paused:
+            current_video.fetch_next_frame()
+        if current_video.current_frame is not None:
+            window.display_frame(current_video.current_frame)
+    
+    print("left the loop")
+    for t in threads:
+        t.join()
+
+    if window is not None:
+        window.dispose()
+    for video in controllers:
+        video.dispose()
+
 def find_video_files_in_directory(directory, recursive_search=False):
     VIDEO_FILE_EXT = ['*.mp4', '*.mov', '*.avi']
     video_files_paths = []
@@ -88,21 +134,13 @@ if __name__  == '__main__':
     )
     args = parser.parse_args()
     
-    videos = {}
+    controllers = []
 
     if args.dir:
         video_files_paths = find_video_files_in_directory(args.input)
         for path in video_files_paths:
-            video_name = os.path.splitext(os.path.basename(path))[0]
-            videos[video_name] = VideoStream(path)
+            controllers.append(VideoController(path))
     else:
-        video_name = os.path.splitext(os.path.basename(args.input))[0]
-        videos[video_name] = VideoStream(args.input)
+        controllers.append(VideoController(args.input))
 
-    for name, stream in videos.items():
-        window = Window(name)
-        window.show(640,480) 
-        worker = VideoWorker(stream, window)
-        worker.process()
-        window.dispose()
-        stream.close()
+    main_loop(controllers)
