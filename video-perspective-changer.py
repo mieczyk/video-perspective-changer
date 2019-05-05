@@ -41,8 +41,11 @@ class VideoController:
         self.current_frame = self._original_frame
     
     def record(self, output_dir):
+        if self.current_frame is None:
+            return
+
         # TODO: Data hardcoded for testing purposes
-        out = OutputVideoFile('{0}/{1}.out.avi'.format(output_dir, self.name), 640, 480)
+        out = OutputVideoFile('{0}/{1}.out.avi'.format(output_dir, self.name), self.current_frame.width, self.current_frame.height)
         while self.current_frame is not None:
             out.add_frame(self.current_frame)
             self.fetch_next_frame()
