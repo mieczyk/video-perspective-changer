@@ -45,7 +45,12 @@ class VideoController:
             return
 
         # TODO: Data hardcoded for testing purposes
-        out = OutputVideoFile('{0}/{1}.out.avi'.format(output_dir, self.name), self.current_frame.width, self.current_frame.height)
+        out = OutputVideoFile(
+            '{0}/{1}.out.avi'.format(output_dir, self.name),
+            self.current_frame.width,
+            self.current_frame.height,
+            self._stream.fps
+        )
         while self.current_frame is not None:
             out.add_frame(self.current_frame)
             self.fetch_next_frame()

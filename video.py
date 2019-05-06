@@ -72,6 +72,7 @@ class VideoStream:
         
         self.width = int(self._cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.height = int(self._cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.fps = round(self._cap.get(cv2.CAP_PROP_FPS))
         
     def next_frame(self):
         success, cv_image = self._cap.read()
